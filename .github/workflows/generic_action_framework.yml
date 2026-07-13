@@ -149,34 +149,34 @@ jobs:
       - name: use build directory
         run: echo "Build directory is ${{ github.workspace }}/build"
 
-      - name: Run Ansible Playbook for dev (deployment)
-        env:
-          RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
-        if: |
-          github.event.inputs.environment == 'dev' && github.event.inputs.host_name != ''
-        run: |
-          ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
-            -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
-            roles=${{ github.event.inputs.roles }} \
-            env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }}\
-            hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
-            directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
-            script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
-            snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
-            ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
+      # - name: Run Ansible Playbook for dev (deployment)
+      #   env:
+      #     RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+      #   if: |
+      #     github.event.inputs.environment == 'dev' && github.event.inputs.host_name != ''
+      #   run: |
+      #     ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
+      #       -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
+      #       roles=${{ github.event.inputs.roles }} \
+      #       env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }}\
+      #       hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
+      #       directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
+      #       script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
+      #       snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
+      #       ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
 
-      - name: Run Ansible Playbook for prod (deployment)
-        env:
-          RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
-        if: |
-          github.event.inputs.environment == 'prod' && github.event.inputs.host_name != ''
-        run: |
-          ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
-            -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
-            roles=${{ github.event.inputs.roles }} \
-            env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }} \
-            hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
-            directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
-            script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
-            snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
-            ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
+      # - name: Run Ansible Playbook for prod (deployment)
+      #   env:
+      #     RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+      #   if: |
+      #     github.event.inputs.environment == 'prod' && github.event.inputs.host_name != ''
+      #   run: |
+      #     ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
+      #       -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
+      #       roles=${{ github.event.inputs.roles }} \
+      #       env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }} \
+      #       hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
+      #       directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
+      #       script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
+      #       snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
+      #       ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
