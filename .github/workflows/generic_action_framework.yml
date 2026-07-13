@@ -1,0 +1,182 @@
+name: Generic Action Framework
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment (dev/prod)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      host_name:
+        description: "Hostname"
+        required: true
+        default: 'maaps-euw1-d-fb-ec204'
+      host_group:
+        description: "Host Group"
+        type: choice
+        default: 'IntelligentPlatform'
+        options:
+          - IntelligentPlatform_QAT
+          - Dev_FaaST
+          - IntelligentPlatform
+          - Localhost
+        required: true
+      roles:
+        description: "Role"
+        required: true
+        default: 'generic_action_framework'
+      snow_ticket_id:
+        description: "ServiceNow Ticket ID"
+      sys_id:
+        description: "Sys ID"
+      directory_path:
+        description: "Directory Path"        
+      script_pattern:
+        description: "Script Pattern"        
+      script_name:
+        description: "Script Name"
+        required: true              
+      playbook_path:
+        description: "Playbook Path"        
+      ah_correlation:
+        description: "AH Correlation"
+        default: 'N/A'
+      ah_action_id:
+        description: "AH Action ID"
+        default: 'N/A'
+      dso:
+        description: "DSO"
+        default: 'N/A'
+      branch:
+        description: 'Branch to pull code from'
+        required: true
+        default: 'main'
+
+jobs:
+  deployment:
+    runs-on: [ self-hosted, linux, x64, philips-code-hub, ubuntu-latest ]
+    
+    #environment: ${{ github.event.inputs.environment == 'prod' && 'maaps_Production' || 'maaps_Development' }}
+
+    permissions:
+      id-token: write
+      contents: write
+
+    # Defined distinct Base64 variables for Dev and Prod environments
+    env:
+      BASE64_AWS_ACCOUNT_ID_DEV: "NDY2OTY4MDEwMDA4"
+      BASE64_AWS_ACCOUNT_ID_PROD: "NDc2MDYzNTEyMDM2"
+      BASE64_AWS_REGION: "ZXUtd2VzdC0x"
+
+    steps:
+      - name: Debug inputs
+        run: |
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Host Group: ${{ github.event.inputs.host_group }}"
+          echo "Host Name: ${{ github.event.inputs.host_name }}"
+          echo "Role: ${{ github.event.inputs.roles }}"
+          echo "Branch: ${{ github.event.inputs.branch }}"
+
+      # Selects the correct account ID based on the environment input, then decodes it
+      - name: Decode AWS Variables
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "AWS_ACCOUNT_ID=$(echo '${{ env.BASE64_AWS_ACCOUNT_ID_PROD }}' | base64 -d)" >> $GITHUB_ENV
+          else
+            echo "AWS_ACCOUNT_ID=$(echo '${{ env.BASE64_AWS_ACCOUNT_ID_DEV }}' | base64 -d)" >> $GITHUB_ENV
+          fi
+          echo "AWS_REGION=$(echo '${{ env.BASE64_AWS_REGION }}' | base64 -d)" >> $GITHUB_ENV
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Print Repository branch name
+        run: |
+          echo "Repository branch name: ${{ github.event.inputs.branch }}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Print AWS variables
+        run: |
+          echo "AWS Account ID: ${{ env.AWS_ACCOUNT_ID }}"
+          echo "AWS Region: ${{ env.AWS_REGION }}"
+
+      - name: "Configure AWS Credentials via OIDC for Dev"
+        if: ${{ github.event.inputs.environment == 'dev' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Configure AWS Credentials via OIDC for Prod
+        if: ${{ github.event.inputs.environment == 'prod' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubOIDCRole
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Print Python path
+        run: |
+          which python3
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible     
+
+      - name: Install Ansible and AWS SSM plugin
+        run: |
+            python -m pip install --upgrade pip
+            pip install ansible boto3 botocore
+            ansible-galaxy collection install community.aws
+
+      - name: use build directory
+        run: echo "Build directory is ${{ github.workspace }}/build"
+
+      - name: Run Ansible Playbook for dev (deployment)
+        env:
+          RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+        if: |
+          github.event.inputs.environment == 'dev' && github.event.inputs.host_name != ''
+        run: |
+          ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
+            -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
+            roles=${{ github.event.inputs.roles }} \
+            env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }}\
+            hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
+            directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
+            script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
+            snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
+            ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
+
+      - name: Run Ansible Playbook for prod (deployment)
+        env:
+          RAW_SCRIPT_NAME: ${{ github.event.inputs.script_name }}
+        if: |
+          github.event.inputs.environment == 'prod' && github.event.inputs.host_name != ''
+        run: |
+          ansible-playbook -i ansible_automation_utility/inventory/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}_inv ${{ github.event.inputs.playbook_path }} \
+            -e "host_group=${{ github.event.inputs.host_group }} target_host=${{ github.event.inputs.host_name }} \
+            roles=${{ github.event.inputs.roles }} \
+            env=${{ github.event.inputs.environment }} ritm=${{ github.event.inputs.snow_ticket_id }} \
+            hostname=${{ github.event.inputs.host_name }} dso=${{ github.event.inputs.dso }} \
+            directory_path=${{ github.event.inputs.directory_path }} script_pattern=${{ github.event.inputs.script_pattern }} \
+            script_name=\"$RAW_SCRIPT_NAME\" playbook_path=${{ github.event.inputs.playbook_path }} \
+            snow_ticket_id=${{ github.event.inputs.snow_ticket_id }} ah_correlation=${{ github.event.inputs.ah_correlation }} \
+            ah_action_id=${{ github.event.inputs.ah_action_id }} sys_id=${{ github.event.inputs.sys_id }}"
