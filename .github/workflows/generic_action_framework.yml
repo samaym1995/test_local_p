@@ -58,7 +58,7 @@ on:
 
 jobs:
   deployment:
-    runs-on: [ self-hosted, linux, x64, philips-code-hub, ubuntu-latest ]
+    runs-on: [ 'self-hosted', 'Windows', 'X64' ]
     
     #environment: ${{ github.event.inputs.environment == 'prod' && 'maaps_Production' || 'maaps_Development' }}
 
